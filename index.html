@@ -118,7 +118,8 @@ form{display:flex;flex-direction:column;gap:15px}
 
     <div class="lg-success" id="lg-success">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12l3 3 5-6"/></svg>
-      <p>Login berhasil! Gunakan tombol <b>"Buka Dashboard"</b> di bawah kotak ini untuk melanjutkan.</p>
+      <p>Login berhasil! Klik tombol di bawah untuk masuk ke halaman Dashboard.</p>
+      <a id="lg-dashboard-link" class="btn-masuk" href="https://sites.google.com/view/dbrealisasi2026/dashboard" target="_top" rel="noopener">Buka Dashboard →</a>
     </div>
 
     <div class="lg-foot">© 2026 Badan Pendapatan Daerah<br>Provinsi Kalimantan Selatan</div>
@@ -198,11 +199,8 @@ form{display:flex;flex-direction:column;gap:15px}
       try { localStorage.setItem('bapenda_auth', '1'); } catch(_){}
       form.style.display = 'none';
       document.getElementById('lg-success').style.display = 'flex';
-      window.location.replace('dashboard.html');
-      /* CATATAN: navigasi otomatis/klik keluar dari iframe embed Sites terbukti diblokir
-         (dicoba 2 cara berbeda, keduanya gagal) -- karena itu tidak dicoba lagi di sini.
-         Tombol "Buka Dashboard" yang sesungguhnya adalah TOMBOL ASLI SITES yang ditempatkan
-         di kanvas halaman Login (di luar kotak embed ini), bukan bagian dari file ini. */
+      const dashboardLink = document.getElementById('lg-dashboard-link');
+      if (dashboardLink) dashboardLink.focus();
     } else {
       gagal(); passIn.value = ''; passIn.focus();
     }
