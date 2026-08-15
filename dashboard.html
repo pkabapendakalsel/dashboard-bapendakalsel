@@ -437,8 +437,13 @@ tr.dpa-detail-row.show{display:table-row}
   }
 
   window.addEventListener('message', (event) => {
-    // Hanya terima pesan dari hidden iframe autentikasi yang kita buat sendiri.
-    if (event.source !== authFrame.contentWindow) return;
+    // Google Apps Script (HtmlService) membungkus respons di dalam frame internal
+    // tambahan miliknya sendiri -- jadi event.source TIDAK akan persis sama dengan
+    // authFrame.contentWindow walau pesannya sah. Verifikasi lewat origin domain
+    // Google Apps Script sebagai gantinya.
+    const originAsal = event.origin || '';
+    const okOrigin = originAsal === 'https://script.google.com' || /\.googleusercontent\.com$/.test(originAsal);
+    if (!okOrigin) return;
 
     const data = event.data || {};
     if (data.type !== 'BAPENDA_LOGIN_RESULT') return;
