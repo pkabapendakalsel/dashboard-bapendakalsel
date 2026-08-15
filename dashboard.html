@@ -9,6 +9,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -259,9 +260,13 @@ tr.dpa-detail-row.show{display:table-row}
 #login-overlay .lg-error{display:none;align-items:center;gap:8px;background:#fff1f3;color:#e11d48;border:1px solid #fecdd6;border-radius:10px;padding:10px 12px;font-size:12.5px;font-weight:700}
 #login-overlay .lg-error.show{display:flex}
 #login-overlay .lg-error svg{width:17px;height:17px;flex:0 0 17px}
-#login-overlay .btn-masuk{margin-top:4px;display:flex;align-items:center;justify-content:center;gap:9px;background:linear-gradient(135deg,#2563eb,#0ea5e9);color:#fff;border:none;border-radius:12px;padding:14px;font-family:'Inter',sans-serif;font-size:14.5px;font-weight:800;cursor:pointer;transition:.2s;box-shadow:0 10px 22px rgba(37,99,235,.32)}
+#login-overlay .btn-masuk{position:relative;overflow:hidden;margin-top:4px;display:flex;align-items:center;justify-content:center;gap:9px;background:linear-gradient(135deg,#2563eb,#0ea5e9);color:#fff;border:none;border-radius:12px;padding:14px;font-family:'Inter',sans-serif;font-size:14.5px;font-weight:800;cursor:pointer;transition:.2s;box-shadow:0 10px 22px rgba(37,99,235,.32)}
 #login-overlay .btn-masuk:hover{transform:translateY(-2px);box-shadow:0 14px 28px rgba(37,99,235,.42)}
-#login-overlay .btn-masuk:disabled{opacity:.7;cursor:wait;transform:none}
+#login-overlay .btn-masuk:disabled{opacity:1;cursor:wait;transform:none}
+#login-overlay .btn-masuk:disabled .lg-progress{position:absolute;left:0;bottom:0;height:3px;width:100%;background:rgba(255,255,255,.25);overflow:hidden}
+#login-overlay .btn-masuk:disabled .lg-progress::before{content:'';position:absolute;top:0;bottom:0;width:35%;background:#fff;border-radius:3px;animation:btnProgresJalan 1.15s ease-in-out infinite}
+@keyframes btnProgresJalan{0%{left:-35%}100%{left:100%}}
+@media(prefers-reduced-motion:reduce){#login-overlay .btn-masuk:disabled .lg-progress::before{animation:none;display:none}}
 #login-overlay .btn-masuk svg{width:18px;height:18px}
 #login-overlay .lg-foot{margin-top:20px;text-align:center;font-size:11px;font-weight:600;color:#94a3b8;line-height:1.5}
 #login-overlay .shake{animation:lgShake .4s}
@@ -312,37 +317,29 @@ tr.dpa-detail-row.show{display:table-row}
       <button type="submit" class="btn-masuk" id="lg-submit">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
         <span class="lg-submit-label">Masuk</span>
+        <span class="lg-progress"></span>
       </button>
     </form>
     <div class="lg-foot">© 2026 Badan Pendapatan Daerah<br>Provinsi Kalimantan Selatan</div>
   </div>
 </div>
 <script>
-  /* Lapisan kedua: lolos otomatis jika pengguna sudah login sebelumnya pada aplikasi ini.
-     Status disimpan di sessionStorage pada tab/sesi browser yang sedang digunakan.
-     Halaman ini sekaligus menjadi login + dashboard, sehingga URL tetap /dashboard. */
-  (function(){
-    var overlay = document.getElementById('login-overlay');
-    var hasSession = false;
-    try {
-      hasSession = sessionStorage.getItem('bapenda_auth') === '1';
-    } catch (_) {}
-
-    // Selalu tampilkan login ketika belum ada sesi login.
-    if (hasSession) {
-      if (overlay) overlay.style.display = 'none';
-      document.documentElement.style.overflow = '';
-    } else {
-      if (overlay) {
-        overlay.style.display = 'flex';
-        overlay.style.opacity = '1';
-      }
-      document.documentElement.style.overflow = 'hidden';
-    }
-  })();
-</script>
-<script>
 (function(){
+  /* ============================================================================================
+     LOGIN VIA SUPABASE AUTH -- jauh lebih sederhana & cepat daripada Apps Script.
+     Kredensial username/password TIDAK ada di kode ini -- semua dikelola Supabase
+     (Authentication > Users di dashboard Supabase). "Anon key" di bawah AMAN dipakai
+     di kode browser -- ini kunci publik yang memang dirancang untuk itu.
+     ============================================================================================ */
+  const SUPABASE_URL = 'https://osvlboeusxbiexvqtjsa.supabase.co';
+  const SUPABASE_ANON_KEY = 'sb_publishable_agrjt5Q_2qdbJ2XjseG5zg_nH05d22F';
+  // Kolom "Nama Pengguna" di form diubah jadi format email ini di baliknya, karena
+  // Supabase Auth memakai email sebagai identitas. Pengguna tetap cukup ketik "admin".
+  const EMAIL_DOMAIN = '@bapenda.local';
+
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  window.bapendaSupabase = sb; // dipakai juga oleh logout() di skrip dashboard utama
+
   const overlay = document.getElementById('login-overlay');
   const form = document.getElementById('lg-form');
   const errBox = document.getElementById('lg-error');
@@ -353,65 +350,30 @@ tr.dpa-detail-row.show{display:table-row}
   const toggle = document.getElementById('lg-toggle');
   const submitBtn = document.getElementById('lg-submit');
   const submitLabel = submitBtn.querySelector('.lg-submit-label');
-  let waitTimerLambat = null, waitTimerHabis = null;
-  function bersihkanTimerTunggu(){
-    if (waitTimerLambat) { clearTimeout(waitTimerLambat); waitTimerLambat = null; }
-    if (waitTimerHabis) { clearTimeout(waitTimerHabis); waitTimerHabis = null; }
-  }
-
-  // Hanya URL Web App yang ada di frontend.
-  // URL Google Sheet dan daftar user/password TIDAK lagi ada di dashboard.html.
-  const AUTH_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzG7-WWYNyzbKuV8KNLMjgS1tS_4wwei6bMh4R2XMg6OmZABHu8dBnpu-ISrTfwieX1/exec";
-
   const EYE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>';
   const EYEOFF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
 
-  // Bridge iframe + form: menghindari kebutuhan CORS/fetch antar-origin.
-  const authFrame = document.createElement('iframe');
-  authFrame.name = 'bapendaAuthBridge';
-  authFrame.id = 'bapendaAuthBridge';
-  authFrame.title = 'Bapenda authentication bridge';
-  authFrame.setAttribute('aria-hidden', 'true');
-  authFrame.style.cssText = 'display:none;width:0;height:0;border:0;position:absolute;left:-9999px;';
-  document.body.appendChild(authFrame);
+  function tampilkanLogin(){
+    if (overlay){ overlay.style.display = 'flex'; overlay.style.opacity = '1'; }
+    document.documentElement.style.overflow = 'hidden';
+    setTimeout(() => userIn && userIn.focus(), 80);
+  }
+  window.bapendaTampilkanLogin = tampilkanLogin; // dipakai oleh logout()
 
-  const authForm = document.createElement('form');
-  authForm.method = 'POST';
-  authForm.action = AUTH_WEB_APP_URL;
-  authForm.target = authFrame.name;
-  authForm.style.display = 'none';
-  authForm.autocomplete = 'off';
+  function sembunyikanLogin(){
+    if (!overlay) return;
+    document.documentElement.style.overflow = '';
+    overlay.style.transition = 'opacity .35s ease';
+    overlay.style.opacity = '0';
+    setTimeout(() => { overlay.style.display = 'none'; overlay.style.opacity = ''; overlay.style.transition = ''; }, 360);
+  }
 
-  const authUser = document.createElement('input');
-  authUser.type = 'hidden';
-  authUser.name = 'username';
-
-  const authPass = document.createElement('input');
-  authPass.type = 'hidden';
-  authPass.name = 'password';
-
-  authForm.appendChild(authUser);
-  authForm.appendChild(authPass);
-  document.body.appendChild(authForm);
-
-  (function(){
-    let hasSession = false;
-    try {
-      hasSession = sessionStorage.getItem('bapenda_auth') === '1';
-    } catch (_) {}
-
-    if (hasSession) {
-      if (overlay) overlay.style.display = 'none';
-      document.documentElement.style.overflow = '';
-    } else {
-      if (overlay) {
-        overlay.style.display = 'flex';
-        overlay.style.opacity = '1';
-      }
-      document.documentElement.style.overflow = 'hidden';
-      setTimeout(() => userIn && userIn.focus(), 80);
-    }
-  })();
+  // Supabase menyimpan sesi login otomatis (localStorage) -- kalau sudah pernah
+  // login sebelumnya (dan belum logout), langsung lolos tanpa perlu login ulang.
+  sb.auth.getSession().then(({ data }) => {
+    if (data && data.session) sembunyikanLogin();
+    else tampilkanLogin();
+  });
 
   toggle.addEventListener('click', () => {
     const show = passIn.type === 'password';
@@ -426,95 +388,6 @@ tr.dpa-detail-row.show{display:table-row}
     card.classList.remove('shake');
     void card.offsetWidth;
     card.classList.add('shake');
-  }
-
-  function loginBerhasil(){
-    errBox.classList.remove('show');
-    try { sessionStorage.setItem('bapenda_auth', '1'); } catch(_){}
-    document.documentElement.style.overflow = '';
-    overlay.style.transition = 'opacity .35s ease';
-    overlay.style.opacity = '0';
-    setTimeout(() => {
-      overlay.style.display = 'none';
-      overlay.style.opacity = '';
-      overlay.style.transition = '';
-    }, 360);
-  }
-
-  window.addEventListener('message', (event) => {
-    // --- DEBUG SEMENTARA: catat SEMUA pesan yang masuk, apa pun asalnya/isinya. ---
-    console.log('[BAPENDA-DEBUG] pesan diterima. origin=', event.origin, ' data=', event.data);
-
-    // Google Apps Script (HtmlService) membungkus respons di dalam frame internal
-    // tambahan miliknya sendiri -- jadi event.source TIDAK akan persis sama dengan
-    // authFrame.contentWindow walau pesannya sah. Verifikasi lewat origin domain
-    // Google Apps Script sebagai gantinya.
-    const originAsal = event.origin || '';
-    const okOrigin = originAsal === 'https://script.google.com' || /\.googleusercontent\.com$/.test(originAsal);
-    if (!okOrigin) { console.log('[BAPENDA-DEBUG] ditolak: origin tidak dikenali ->', originAsal); return; }
-
-    const data = event.data || {};
-    if (data.type !== 'BAPENDA_LOGIN_RESULT') { console.log('[BAPENDA-DEBUG] ditolak: type tidak cocok ->', data.type); return; }
-    console.log('[BAPENDA-DEBUG] pesan DITERIMA & valid:', data);
-    bersihkanTimerTunggu();
-
-    submitBtn.disabled = false;
-    submitLabel.textContent = 'Masuk';
-
-    if (data.success === true) {
-      loginBerhasil();
-      passIn.value = '';
-    } else {
-      gagal(data.message || 'Username atau password salah.');
-      passIn.value = '';
-      passIn.focus();
-    }
-  });
-
-  function prosesHasilLogin(data){
-    bersihkanTimerTunggu();
-    submitBtn.disabled = false;
-    submitLabel.textContent = 'Masuk';
-    if (data && data.success === true) {
-      loginBerhasil();
-      passIn.value = '';
-    } else {
-      gagal((data && data.message) || 'Username atau password salah.');
-      passIn.value = '';
-      passIn.focus();
-    }
-  }
-
-  function pakaiJalurCadangan(u, p){
-    // Jalur lama (iframe tersembunyi + postMessage) -- lebih lambat tapi terbukti jalan.
-    authUser.value = u;
-    authPass.value = p;
-
-    console.log('[BAPENDA-DEBUG] jalur cadangan: mengirim form ke:', AUTH_WEB_APP_URL, ' target iframe:', authForm.target);
-
-    bersihkanTimerTunggu();
-    // Server (Apps Script) kadang butuh beberapa detik untuk merespons -- beri
-    // kepastian ke pengguna bahwa ini normal, bukan macet.
-    waitTimerLambat = setTimeout(() => {
-      submitLabel.textContent = 'Masih memeriksa, mohon tunggu…';
-    }, 4000);
-    // Kalau lebih dari 25 detik tak ada balasan sama sekali, jangan biarkan
-    // pengguna menunggu tanpa kepastian -- tampilkan pesan & aktifkan lagi tombolnya.
-    waitTimerHabis = setTimeout(() => {
-      submitBtn.disabled = false;
-      submitLabel.textContent = 'Masuk';
-      gagal('Server tidak merespons. Periksa koneksi internet, lalu coba lagi.');
-    }, 25000);
-
-    try {
-      authForm.submit();
-      console.log('[BAPENDA-DEBUG] authForm.submit() berhasil dipanggil tanpa error.');
-    } catch (_) {
-      bersihkanTimerTunggu();
-      submitBtn.disabled = false;
-      submitLabel.textContent = 'Masuk';
-      gagal('Tidak dapat menghubungi server autentikasi.');
-    }
   }
 
   form.addEventListener('submit', async (e) => {
@@ -532,28 +405,21 @@ tr.dpa-detail-row.show{display:table-row}
     submitLabel.textContent = 'Memeriksa…';
     errBox.classList.remove('show');
 
-    // ---- Jalur CEPAT: fetch() langsung, minta balasan JSON polos (tanpa render
-    // halaman) -- biasanya jauh lebih cepat. Batas waktu 6 detik; kalau gagal
-    // (mis. diblokir CORS) atau lambat, otomatis pakai jalur cadangan (iframe). ----
-    try {
-      const kontrol = new AbortController();
-      const batasWaktu = setTimeout(() => kontrol.abort(), 6000);
-      const res = await fetch(AUTH_WEB_APP_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({ username: u, password: p, mode: 'json' }).toString(),
-        signal: kontrol.signal
-      });
-      clearTimeout(batasWaktu);
-      const data = await res.json();
-      console.log('[BAPENDA-DEBUG] jalur cepat (fetch) berhasil:', data);
-      prosesHasilLogin(data);
-      return;
-    } catch (fetchErr) {
-      console.log('[BAPENDA-DEBUG] jalur cepat (fetch) gagal, beralih ke jalur cadangan:', fetchErr);
-    }
+    const email = u.includes('@') ? u : (u + EMAIL_DOMAIN);
+    const { error } = await sb.auth.signInWithPassword({ email, password: p });
 
-    pakaiJalurCadangan(u, p);
+    submitBtn.disabled = false;
+    submitLabel.textContent = 'Masuk';
+
+    if (!error) {
+      errBox.classList.remove('show');
+      passIn.value = '';
+      sembunyikanLogin();
+    } else {
+      gagal('Nama pengguna atau kata sandi salah.');
+      passIn.value = '';
+      passIn.focus();
+    }
   });
 })();
 </script>
@@ -796,14 +662,13 @@ document.getElementById('filter-tahun').addEventListener('change', function(e) {
 });
 
 function logout(){
-  try { sessionStorage.removeItem('bapenda_auth'); } catch(e){}
-  const ov = document.getElementById('login-overlay');
-  if (ov){
-    ov.style.display = 'flex';
-    ov.style.opacity = '';
-    ov.style.transition = '';
+  if (window.bapendaSupabase) { window.bapendaSupabase.auth.signOut().catch(function(){}); }
+  if (window.bapendaTampilkanLogin) { window.bapendaTampilkanLogin(); }
+  else {
+    const ov = document.getElementById('login-overlay');
+    if (ov){ ov.style.display = 'flex'; ov.style.opacity = ''; ov.style.transition = ''; }
+    document.documentElement.style.overflow = 'hidden';
   }
-  document.documentElement.style.overflow = 'hidden';
   const p = document.getElementById('lg-pass'); if (p) p.value = '';
   const u = document.getElementById('lg-user'); if (u){ u.value = ''; setTimeout(() => u.focus(), 80); }
 }
