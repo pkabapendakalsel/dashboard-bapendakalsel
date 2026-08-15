@@ -630,14 +630,14 @@ tr.dpa-detail-row.show{display:table-row}
             <tr>
               <th width="3%">No</th>
               <th width="14%" style="text-align:left; padding-left:1.5vw;">Kode Rekening</th>
-              <th width="20%" style="text-align:left;">Uraian Kegiatan / Rincian</th>
+              <th width="24%" style="text-align:left;">Uraian Kegiatan / Rincian</th>
               <th class="col-rak" width="9%" style="text-align:right;">RAK</th>
               <th class="col-anggaran" width="9%" style="text-align:right;">Anggaran</th>
               <th class="col-realisasi" width="9%" style="text-align:right;">Realisasi</th>
               <th class="col-sisa" width="9%" style="text-align:right;">Sisa Pagu</th>
               <th class="col-keu" width="7%" style="text-align:center;">% Keu</th>
               <th class="col-fisik" width="7%" style="text-align:center;">% Fisik</th>
-              <th class="col-gap" width="12%" style="text-align:center;">GAP RAK</th>
+              <th class="col-gap" width="8%" style="text-align:center;">GAP RAK</th>
             </tr>
           </thead>
           <tfoot id="table-footer"></tfoot>
@@ -1917,7 +1917,7 @@ function updateDashboard() {
        const expandButton = (kLen === 19)
          ? `<button type="button" class="expand-btn" data-dpa-code="${escapeHtml(kode)}" data-subkeg-code="${escapeHtml(subKegCode)}" onclick="window.toggleDpaDetailByButton(this)" title="Buka/tutup rincian DPA">+</button>` : "";
        const rowNo = (kode.startsWith("5.02") && kLen === 17) ? no++ : "";
-       tr.innerHTML = `<td style="text-align:center;">${rowNo}</td><td style="font-family:monospace;padding-left:${paddingLeft};">${expandButton}${kode}</td><td style="padding-left:${paddingLeft};">${r[colUraian]||'-'}</td><td class="col-rak" style="text-align:right;">${formatRp(rak)}</td><td class="col-anggaran" style="text-align:right;">${formatRp(ang)}</td><td class="col-realisasi" style="text-align:right;">${formatRp(real)}</td><td class="col-sisa" style="text-align:right;">${formatRp(sisaRow)}</td><td class="col-keu" style="text-align:center;color:${isBold?'inherit':colPct}; font-weight:700;">${pct.toFixed(2)}%</td><td class="col-fisik" style="text-align:center;color:#0ea5e9; font-weight:700;">${fisik.toFixed(2)}%</td><td class="col-gap" style="text-align:center; font-weight:700; color:${gapColor};">${formatRp(gap)}</td>`;
+       tr.innerHTML = `<td style="text-align:center;">${rowNo}</td><td style="font-family:monospace;padding-left:${paddingLeft};">${expandButton}${kode}</td><td style="padding-left:${paddingLeft};">${r[colUraian]||'-'}</td><td class="col-rak" style="text-align:right;">${formatRp(rak)}</td><td class="col-anggaran" style="text-align:right;">${formatRp(ang)}</td><td class="col-realisasi" style="text-align:right;">${formatRp(real)}</td><td class="col-sisa" style="text-align:right;color:#d97706; font-weight:700;">${formatRp(sisaRow)}</td><td class="col-keu" style="text-align:center;color:#d97706; font-weight:700;">${pct.toFixed(2)}%</td><td class="col-fisik" style="text-align:center;color:#16233d; font-weight:700;">${fisik.toFixed(2)}%</td><td class="col-gap" style="text-align:center; font-weight:700; color:#16233d;">${formatRp(gap)}</td>`;
        tbody.appendChild(tr);
        if (dpaDetails.length) tbody.insertAdjacentHTML('beforeend', buildDpaDetailHtml(kode,subKegCode));
   });
@@ -1927,7 +1927,7 @@ function updateDashboard() {
   let totalGap = totalRak - totalReal; if (totalGap < 0) totalGap = 0;
   let totalGapColor = (totalRak > 0 && (totalGap/totalRak)*100 > 10) ? "#DC2626" : "#16A34A";
 
-  tfoot.innerHTML = `<tr><td colspan="3" style="text-align:center;text-transform:uppercase;">Total Keseluruhan</td><td class="col-rak" style="text-align:right;color:#16233d;">Rp ${formatRp(totalRak)}</td><td class="col-anggaran" style="text-align:right;color:#2563EB;">Rp ${formatRp(totalAng)}</td><td class="col-realisasi" style="text-align:right;color:#14B8A6;">Rp ${formatRp(totalReal)}</td><td class="col-sisa" style="text-align:right;color:#F59E0B;">Rp ${formatRp(totalSisa)}</td><td class="col-keu" style="text-align:center;color:#0891B2;">${totalPct.toFixed(2)}%</td><td class="col-fisik" style="text-align:center;color:#0EA5E9;">${totalFisik.toFixed(2)}%</td><td class="col-gap" style="text-align:center;color:${totalGapColor};">Rp ${formatRp(totalGap)}</td></tr>`;
+  tfoot.innerHTML = `<tr><td colspan="3" style="text-align:center;text-transform:uppercase;">Total Keseluruhan</td><td class="col-rak" style="text-align:right;color:#16233d;">Rp ${formatRp(totalRak)}</td><td class="col-anggaran" style="text-align:right;color:#2563EB;">Rp ${formatRp(totalAng)}</td><td class="col-realisasi" style="text-align:right;color:#14B8A6;">Rp ${formatRp(totalReal)}</td><td class="col-sisa" style="text-align:right;color:#d97706;">Rp ${formatRp(totalSisa)}</td><td class="col-keu" style="text-align:center;color:#d97706;">${totalPct.toFixed(2)}%</td><td class="col-fisik" style="text-align:center;color:#16233d;">${totalFisik.toFixed(2)}%</td><td class="col-gap" style="text-align:center;color:#16233d;">Rp ${formatRp(totalGap)}</td></tr>`;
   updateKPI(totalAng, totalReal, totalSisa);
 }
 
