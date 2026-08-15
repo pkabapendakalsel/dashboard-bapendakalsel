@@ -471,25 +471,26 @@ tr.dpa-detail-row.show{display:table-row}
     }
   });
 
-  form.addEventListener('submit', (e) => {
-    e.preventDefault();
-
-    const u = userIn.value.trim();
-    const p = passIn.value;
-
-    if (!u || !p) {
-      gagal('Username dan password wajib diisi.');
-      return;
+  function prosesHasilLogin(data){
+    bersihkanTimerTunggu();
+    submitBtn.disabled = false;
+    submitLabel.textContent = 'Masuk';
+    if (data && data.success === true) {
+      loginBerhasil();
+      passIn.value = '';
+    } else {
+      gagal((data && data.message) || 'Username atau password salah.');
+      passIn.value = '';
+      passIn.focus();
     }
+  }
 
-    submitBtn.disabled = true;
-    submitLabel.textContent = 'Memeriksa…';
-    errBox.classList.remove('show');
-
+  function pakaiJalurCadangan(u, p){
+    // Jalur lama (iframe tersembunyi + postMessage) -- lebih lambat tapi terbukti jalan.
     authUser.value = u;
     authPass.value = p;
 
-    console.log('[BAPENDA-DEBUG] mengirim form ke:', AUTH_WEB_APP_URL, ' target iframe:', authForm.target);
+    console.log('[BAPENDA-DEBUG] jalur cadangan: mengirim form ke:', AUTH_WEB_APP_URL, ' target iframe:', authForm.target);
 
     bersihkanTimerTunggu();
     // Server (Apps Script) kadang butuh beberapa detik untuk merespons -- beri
@@ -514,6 +515,45 @@ tr.dpa-detail-row.show{display:table-row}
       submitLabel.textContent = 'Masuk';
       gagal('Tidak dapat menghubungi server autentikasi.');
     }
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const u = userIn.value.trim();
+    const p = passIn.value;
+
+    if (!u || !p) {
+      gagal('Username dan password wajib diisi.');
+      return;
+    }
+
+    submitBtn.disabled = true;
+    submitLabel.textContent = 'Memeriksa…';
+    errBox.classList.remove('show');
+
+    // ---- Jalur CEPAT: fetch() langsung, minta balasan JSON polos (tanpa render
+    // halaman) -- biasanya jauh lebih cepat. Batas waktu 6 detik; kalau gagal
+    // (mis. diblokir CORS) atau lambat, otomatis pakai jalur cadangan (iframe). ----
+    try {
+      const kontrol = new AbortController();
+      const batasWaktu = setTimeout(() => kontrol.abort(), 6000);
+      const res = await fetch(AUTH_WEB_APP_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ username: u, password: p, mode: 'json' }).toString(),
+        signal: kontrol.signal
+      });
+      clearTimeout(batasWaktu);
+      const data = await res.json();
+      console.log('[BAPENDA-DEBUG] jalur cepat (fetch) berhasil:', data);
+      prosesHasilLogin(data);
+      return;
+    } catch (fetchErr) {
+      console.log('[BAPENDA-DEBUG] jalur cepat (fetch) gagal, beralih ke jalur cadangan:', fetchErr);
+    }
+
+    pakaiJalurCadangan(u, p);
   });
 })();
 </script>
