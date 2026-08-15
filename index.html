@@ -118,8 +118,7 @@ form{display:flex;flex-direction:column;gap:15px}
 
     <div class="lg-success" id="lg-success">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12l3 3 5-6"/></svg>
-      <p>Login berhasil, mengalihkan ke dashboard… Jika tidak berpindah otomatis, klik tombol di bawah ini.</p>
-      <a id="lg-link" class="btn-masuk" href="#" target="_top">Buka Dashboard →</a>
+      <p>Login berhasil! Gunakan tombol <b>"Buka Dashboard"</b> di bawah kotak ini untuk melanjutkan.</p>
     </div>
 
     <div class="lg-foot">© 2026 Badan Pendapatan Daerah<br>Provinsi Kalimantan Selatan</div>
@@ -127,13 +126,6 @@ form{display:flex;flex-direction:column;gap:15px}
 
 <script>
 (function(){
-  /* ============================================================================================
-     TUJUAN SETELAH LOGIN BERHASIL -- halaman "Dashboard" di situs Google Sites (embed
-     "Berdasarkan URL" menunjuk ke dashboard.html). URL absolut, karena kita perlu keluar
-     dari iframe halaman "Login" menuju halaman Sites yang berbeda.
-     ============================================================================================ */
-  const HALAMAN_DASHBOARD = "https://sites.google.com/view/dbrealisasi2026/dashboard-monitoring-realisasi-bapenda-2026";
-
   /* ============================================================================================
      SUMBER KREDENSIAL LOGIN -- HANYA dari Google Sheet (tidak ada akun cadangan lokal).
      CSV_URL_LOGIN = "database" login (kolom NAMA PENGGUNA / KATA SANDI).
@@ -205,12 +197,11 @@ form{display:flex;flex-direction:column;gap:15px}
       errBox.classList.remove('show');
       try { sessionStorage.setItem('bapenda_auth', '1'); } catch(_){}
       form.style.display = 'none';
-      document.getElementById('lg-link').href = HALAMAN_DASHBOARD;
       document.getElementById('lg-success').style.display = 'flex';
-      /* index.html berjalan di dalam iframe embed Sites -- coba lompat ke luar iframe
-         menuju halaman Sites lain. Tombol manual di atas (target="_top") tetap jadi
-         jalan pasti kalau percobaan otomatis ini diblokir sandbox. */
-      try { window.top.location.href = HALAMAN_DASHBOARD; } catch(_){}
+      /* CATATAN: navigasi otomatis/klik keluar dari iframe embed Sites terbukti diblokir
+         (dicoba 2 cara berbeda, keduanya gagal) -- karena itu tidak dicoba lagi di sini.
+         Tombol "Buka Dashboard" yang sesungguhnya adalah TOMBOL ASLI SITES yang ditempatkan
+         di kanvas halaman Login (di luar kotak embed ini), bukan bagian dari file ini. */
     } else {
       gagal(); passIn.value = ''; passIn.focus();
     }
