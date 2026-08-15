@@ -489,9 +489,28 @@ tr.dpa-detail-row.show{display:table-row}
 
 <div id="loading">
   <div style="width: 50px; height: 50px; border: 5px solid #E2E8F0; border-top: 5px solid #3B82F6; border-radius: 50%; animation: spin 1s linear infinite;"></div>
-  <span>Sistem Memuat Data RAK & SPJ...</span>
+  <span id="loading-text">Sistem Memuat Data RAK & SPJ...</span>
   <style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>
 </div>
+<script>
+(function(){
+  // Beri kepastian kalau proses memuat data lama (biasanya soal kecepatan jaringan
+  // ke Google Sheets, bukan macet) -- pesan berubah bertahap, bukan diam saja.
+  const teks = document.getElementById('loading-text');
+  if (!teks) return;
+  const tahapan = [
+    { pada: 6000,  pesan: 'Masih memuat data, mohon tunggu…' },
+    { pada: 15000, pesan: 'Koneksi tampak lambat -- tetap memuat, jangan tutup halaman…' },
+    { pada: 30000, pesan: 'Masih berusaha memuat data. Periksa sinyal/koneksi internetmu.' }
+  ];
+  tahapan.forEach(t => {
+    setTimeout(() => {
+      const el = document.getElementById('loading');
+      if (el && el.style.display !== 'none') teks.textContent = t.pesan;
+    }, t.pada);
+  });
+})();
+</script>
 
 <div class="dashboard-layout" id="dashboard-layout" style="display:none">
   
