@@ -361,6 +361,11 @@ tr.dpa-detail-row.show{display:table-row}
   const EYEOFF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
 
   function tampilkanLogin(){
+    // Dashboard disembunyikan TOTAL (display:none) selagi belum login -- bukan
+    // sekadar ditutupi lapisan overlay -- supaya tak ada apa pun yang bisa "bocor"
+    // ke luar batas kotak, sekalipun saat ditanam di iframe (mis. Google Sites).
+    const dl = document.getElementById('dashboard-layout');
+    if (dl) dl.style.display = 'none';
     if (overlay){ overlay.style.display = 'flex'; overlay.style.opacity = '1'; }
     document.documentElement.style.overflow = 'hidden';
     setTimeout(() => userIn && userIn.focus(), 80);
@@ -373,6 +378,8 @@ tr.dpa-detail-row.show{display:table-row}
     overlay.style.transition = 'opacity .35s ease';
     overlay.style.opacity = '0';
     setTimeout(() => { overlay.style.display = 'none'; overlay.style.opacity = ''; overlay.style.transition = ''; }, 360);
+    const dl = document.getElementById('dashboard-layout');
+    if (dl) dl.style.display = '';
     if (window.bapendaResetIdleTimer) window.bapendaResetIdleTimer();
   }
 
@@ -467,7 +474,7 @@ tr.dpa-detail-row.show{display:table-row}
   <style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>
 </div>
 
-<div class="dashboard-layout">
+<div class="dashboard-layout" id="dashboard-layout" style="display:none">
   
   <div class="header-section">
     <div class="header-brand">
