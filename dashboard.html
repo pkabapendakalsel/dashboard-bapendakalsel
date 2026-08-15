@@ -437,16 +437,20 @@ tr.dpa-detail-row.show{display:table-row}
   }
 
   window.addEventListener('message', (event) => {
+    // --- DEBUG SEMENTARA: catat SEMUA pesan yang masuk, apa pun asalnya/isinya. ---
+    console.log('[BAPENDA-DEBUG] pesan diterima. origin=', event.origin, ' data=', event.data);
+
     // Google Apps Script (HtmlService) membungkus respons di dalam frame internal
     // tambahan miliknya sendiri -- jadi event.source TIDAK akan persis sama dengan
     // authFrame.contentWindow walau pesannya sah. Verifikasi lewat origin domain
     // Google Apps Script sebagai gantinya.
     const originAsal = event.origin || '';
     const okOrigin = originAsal === 'https://script.google.com' || /\.googleusercontent\.com$/.test(originAsal);
-    if (!okOrigin) return;
+    if (!okOrigin) { console.log('[BAPENDA-DEBUG] ditolak: origin tidak dikenali ->', originAsal); return; }
 
     const data = event.data || {};
-    if (data.type !== 'BAPENDA_LOGIN_RESULT') return;
+    if (data.type !== 'BAPENDA_LOGIN_RESULT') { console.log('[BAPENDA-DEBUG] ditolak: type tidak cocok ->', data.type); return; }
+    console.log('[BAPENDA-DEBUG] pesan DITERIMA & valid:', data);
 
     submitBtn.disabled = false;
     submitLabel.textContent = 'Masuk';
@@ -479,8 +483,11 @@ tr.dpa-detail-row.show{display:table-row}
     authUser.value = u;
     authPass.value = p;
 
+    console.log('[BAPENDA-DEBUG] mengirim form ke:', AUTH_WEB_APP_URL, ' target iframe:', authForm.target);
+
     try {
       authForm.submit();
+      console.log('[BAPENDA-DEBUG] authForm.submit() berhasil dipanggil tanpa error.');
     } catch (_) {
       submitBtn.disabled = false;
       submitLabel.textContent = 'Masuk';
