@@ -319,14 +319,24 @@ tr.dpa-detail-row.show{display:table-row}
 </div>
 <script>
   /* Lapisan kedua: lolos otomatis jika pengguna sudah login sebelumnya pada aplikasi ini.
-     Status disimpan di localStorage pada origin GitHub Pages yang sama.
+     Status disimpan di sessionStorage pada tab/sesi browser yang sedang digunakan.
      Halaman ini sekaligus menjadi login + dashboard, sehingga URL tetap /dashboard. */
   (function(){
+    var overlay = document.getElementById('login-overlay');
     var hasSession = false;
-    try { hasSession = localStorage.getItem('bapenda_auth') === '1'; } catch(_){}
+    try {
+      hasSession = sessionStorage.getItem('bapenda_auth') === '1';
+    } catch (_) {}
+
+    // Selalu tampilkan login ketika belum ada sesi login.
     if (hasSession) {
-      document.getElementById('login-overlay').style.display = 'none';
+      if (overlay) overlay.style.display = 'none';
+      document.documentElement.style.overflow = '';
     } else {
+      if (overlay) {
+        overlay.style.display = 'flex';
+        overlay.style.opacity = '1';
+      }
       document.documentElement.style.overflow = 'hidden';
     }
   })();
@@ -402,11 +412,15 @@ tr.dpa-detail-row.show{display:table-row}
     }
     if (sheetCreds.some(k => k.user === u && k.pass === p)){
       errBox.classList.remove('show');
-      try { localStorage.setItem('bapenda_auth', '1'); } catch(_){}
+      try { sessionStorage.setItem('bapenda_auth', '1'); } catch(_){}
       document.documentElement.style.overflow = '';
       overlay.style.transition = 'opacity .35s ease';
       overlay.style.opacity = '0';
-      setTimeout(() => { overlay.style.display = 'none'; overlay.style.opacity = ''; overlay.style.transition = ''; }, 360);
+      setTimeout(() => {
+        overlay.style.display = 'none';
+        overlay.style.opacity = '';
+        overlay.style.transition = '';
+      }, 360);
     } else {
       gagal(); passIn.value = ''; passIn.focus();
     }
@@ -653,9 +667,13 @@ document.getElementById('filter-tahun').addEventListener('change', function(e) {
 });
 
 function logout(){
-  try { localStorage.removeItem('bapenda_auth'); } catch(e){}
+  try { sessionStorage.removeItem('bapenda_auth'); } catch(e){}
   const ov = document.getElementById('login-overlay');
-  if (ov){ ov.style.display = 'flex'; ov.style.opacity = ''; }
+  if (ov){
+    ov.style.display = 'flex';
+    ov.style.opacity = '';
+    ov.style.transition = '';
+  }
   document.documentElement.style.overflow = 'hidden';
   const p = document.getElementById('lg-pass'); if (p) p.value = '';
   const u = document.getElementById('lg-user'); if (u){ u.value = ''; setTimeout(() => u.focus(), 80); }
