@@ -353,6 +353,11 @@ tr.dpa-detail-row.show{display:table-row}
   const toggle = document.getElementById('lg-toggle');
   const submitBtn = document.getElementById('lg-submit');
   const submitLabel = submitBtn.querySelector('.lg-submit-label');
+  let waitTimerLambat = null, waitTimerHabis = null;
+  function bersihkanTimerTunggu(){
+    if (waitTimerLambat) { clearTimeout(waitTimerLambat); waitTimerLambat = null; }
+    if (waitTimerHabis) { clearTimeout(waitTimerHabis); waitTimerHabis = null; }
+  }
 
   // Hanya URL Web App yang ada di frontend.
   // URL Google Sheet dan daftar user/password TIDAK lagi ada di dashboard.html.
@@ -451,6 +456,7 @@ tr.dpa-detail-row.show{display:table-row}
     const data = event.data || {};
     if (data.type !== 'BAPENDA_LOGIN_RESULT') { console.log('[BAPENDA-DEBUG] ditolak: type tidak cocok ->', data.type); return; }
     console.log('[BAPENDA-DEBUG] pesan DITERIMA & valid:', data);
+    bersihkanTimerTunggu();
 
     submitBtn.disabled = false;
     submitLabel.textContent = 'Masuk';
@@ -485,10 +491,25 @@ tr.dpa-detail-row.show{display:table-row}
 
     console.log('[BAPENDA-DEBUG] mengirim form ke:', AUTH_WEB_APP_URL, ' target iframe:', authForm.target);
 
+    bersihkanTimerTunggu();
+    // Server (Apps Script) kadang butuh beberapa detik untuk merespons -- beri
+    // kepastian ke pengguna bahwa ini normal, bukan macet.
+    waitTimerLambat = setTimeout(() => {
+      submitLabel.textContent = 'Masih memeriksa, mohon tunggu…';
+    }, 4000);
+    // Kalau lebih dari 25 detik tak ada balasan sama sekali, jangan biarkan
+    // pengguna menunggu tanpa kepastian -- tampilkan pesan & aktifkan lagi tombolnya.
+    waitTimerHabis = setTimeout(() => {
+      submitBtn.disabled = false;
+      submitLabel.textContent = 'Masuk';
+      gagal('Server tidak merespons. Periksa koneksi internet, lalu coba lagi.');
+    }, 25000);
+
     try {
       authForm.submit();
       console.log('[BAPENDA-DEBUG] authForm.submit() berhasil dipanggil tanpa error.');
     } catch (_) {
+      bersihkanTimerTunggu();
       submitBtn.disabled = false;
       submitLabel.textContent = 'Masuk';
       gagal('Tidak dapat menghubungi server autentikasi.');
