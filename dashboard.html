@@ -393,10 +393,21 @@ tr.dpa-detail-row.show{display:table-row}
 
   // Supabase menyimpan sesi login otomatis (localStorage) -- kalau sudah pernah
   // login sebelumnya (dan belum logout), langsung lolos tanpa perlu login ulang.
-  sb.auth.getSession().then(({ data }) => {
-    if (data && data.session) sembunyikanLogin();
-    else tampilkanLogin();
-  });
+  // PENTING: baru dijalankan setelah seluruh HTML selesai dimuat (DOMContentLoaded) --
+  // kalau tidak, saat sesi sudah tersimpan, pengecekan ini bisa selesai lebih cepat
+  // daripada elemen #dashboard-layout selesai di-parse browser, membuatnya gagal
+  // ditemukan (null) dan dashboard tak pernah dimunculkan (layar jadi putih kosong).
+  function jalankanPengecekanSesi(){
+    sb.auth.getSession().then(({ data }) => {
+      if (data && data.session) sembunyikanLogin();
+      else tampilkanLogin();
+    });
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', jalankanPengecekanSesi);
+  } else {
+    jalankanPengecekanSesi();
+  }
 
   toggle.addEventListener('click', () => {
     const show = passIn.type === 'password';
