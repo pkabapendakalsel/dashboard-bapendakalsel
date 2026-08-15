@@ -1892,7 +1892,7 @@ function updateDashboard() {
       
       let sisaRow = ang - real, pct = ang > 0 ? (real/ang)*100 : 0, fisik = (pct > 0 || real > 0) ? Math.min(pct + 15, 100) : 0;
       let gap = rak - real; if (gap < 0) gap = 0;
-      let gapColor = (rak > 0 && (gap/rak)*100 > 10) ? "#DC2626" : "#16A34A", colPct = pct < 50 ? '#DC2626' : (pct < 80 ? '#F59E0B' : '#16A34A');
+      let gapColor = (rak > 0 && (gap/rak)*100 > 10) ? "#DC2626" : "#16A34A", colPct = pct < 50 ? '#DC2626' : (pct < 90 ? '#F59E0B' : '#16A34A');
       let bgColor = "#ffffff", isBold = false, textColor = "#1f2a44", paddingLeft = "1vw", borderBottom = "1px solid #eef2f7", dotCount = (kode.match(/\./g) || []).length;
 
       if (dotCount === 0) { bgColor = "#eef2ff"; textColor = "#1e3a8a"; isBold = true; paddingLeft = "0.5vw"; }
@@ -1926,7 +1926,7 @@ function updateDashboard() {
   let totalSisa = totalAng - totalReal, totalPct = totalAng > 0 ? (totalReal/totalAng)*100 : 0, totalFisik = totalAng > 0 ? Math.min(totalPct + 15, 100) : 0;
   let totalGap = totalRak - totalReal; if (totalGap < 0) totalGap = 0;
   let totalGapColor = (totalRak > 0 && (totalGap/totalRak)*100 > 10) ? "#DC2626" : "#16A34A";
-  let totalColPct = totalPct < 50 ? '#DC2626' : (totalPct < 80 ? '#F59E0B' : '#16A34A');
+  let totalColPct = totalPct < 50 ? '#DC2626' : (totalPct < 90 ? '#F59E0B' : '#16A34A');
 
   tfoot.innerHTML = `<tr><td colspan="3" style="text-align:center;text-transform:uppercase;">Total Keseluruhan</td><td class="col-rak" style="text-align:right;color:#16233d;">Rp ${formatRp(totalRak)}</td><td class="col-anggaran" style="text-align:right;color:#16233d;">Rp ${formatRp(totalAng)}</td><td class="col-realisasi" style="text-align:right;color:#16233d;">Rp ${formatRp(totalReal)}</td><td class="col-sisa" style="text-align:right;color:${totalColPct};">Rp ${formatRp(totalSisa)}</td><td class="col-keu" style="text-align:center;color:${totalColPct};">${totalPct.toFixed(2)}%</td><td class="col-fisik" style="text-align:center;color:#16233d;">${totalFisik.toFixed(2)}%</td><td class="col-gap" style="text-align:center;color:#16233d;">Rp ${formatRp(totalGap)}</td></tr>`;
   updateKPI(totalAng, totalReal, totalSisa);
