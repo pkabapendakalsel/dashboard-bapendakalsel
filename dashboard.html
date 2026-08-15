@@ -380,6 +380,14 @@ tr.dpa-detail-row.show{display:table-row}
     setTimeout(() => { overlay.style.display = 'none'; overlay.style.opacity = ''; overlay.style.transition = ''; }, 360);
     const dl = document.getElementById('dashboard-layout');
     if (dl) dl.style.display = '';
+    // Kalau grafik sudah terbentuk SEBELUM dashboard terlihat (data selesai dimuat
+    // sebelum login selesai), kanvasnya terukur 0 saat dibuat dan tidak otomatis
+    // menggambar ulang begitu kontainernya terlihat -- paksa hitung ulang di sini.
+    setTimeout(() => {
+      try { if (typeof myPieChart !== 'undefined' && myPieChart) myPieChart.resize(); } catch(_){}
+      try { if (typeof myBarChart !== 'undefined' && myBarChart) myBarChart.resize(); } catch(_){}
+      try { if (typeof myLineChart !== 'undefined' && myLineChart) myLineChart.resize(); } catch(_){}
+    }, 60);
     if (window.bapendaResetIdleTimer) window.bapendaResetIdleTimer();
   }
 
