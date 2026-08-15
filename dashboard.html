@@ -205,7 +205,7 @@ tr.dpa-detail-row.show{display:table-row}
 
 
 /* ===== LOADING / SCROLL ===== */
-#loading{position:fixed;inset:0;background:rgba(245,247,252,.95);backdrop-filter:blur(8px);display:flex;flex-direction:column;justify-content:center;align-items:center;font-size:14px;font-weight:800;color:#1f2a44;z-index:9999;gap:15px}
+#loading{position:fixed;inset:0;background:rgba(245,247,252,.95);backdrop-filter:blur(8px);display:flex;flex-direction:column;justify-content:center;align-items:center;font-size:14px;font-weight:800;color:#1f2a44;z-index:9999;gap:15px;transform:translateZ(0)}
 #loading>div{border-color:#e5e9f2!important;border-top-color:#4f7cff!important;box-shadow:0 0 25px rgba(79,124,255,.18)}
 ::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-track{background:#eef2f8;border-radius:10px}::-webkit-scrollbar-thumb{background:linear-gradient(#2563eb,#06b6d4);border-radius:10px}::-webkit-scrollbar-thumb:hover{background:linear-gradient(#1d4ed8,#0891b2)}
 
@@ -230,10 +230,10 @@ tr.dpa-detail-row.show{display:table-row}
 }
 
 /* ===== LAPISAN KEDUA: gerbang login juga di Page 2, untuk akses langsung tanpa lewat Page 1 ===== */
-#login-overlay{position:fixed;inset:0;z-index:100000;display:flex;align-items:center;justify-content:center;padding:24px;overflow:hidden;font-family:'Inter',sans-serif;color:#16233d;background:linear-gradient(135deg,#0a2e8c 0%,#1657cf 38%,#0e8fd6 70%,#22d3ee 100%)}
+#login-overlay{position:fixed;inset:0;z-index:100000;display:flex;align-items:center;justify-content:center;padding:24px;overflow:hidden;font-family:'Inter',sans-serif;color:#16233d;background:linear-gradient(135deg,#0a2e8c 0%,#1657cf 38%,#0e8fd6 70%,#22d3ee 100%);transform:translateZ(0);-webkit-backface-visibility:hidden;backface-visibility:hidden}
 #login-overlay .lg-bg{position:absolute;inset:0;overflow:hidden;pointer-events:none}
 #login-overlay .lg-grid{position:absolute;inset:0;opacity:.5;background-image:linear-gradient(rgba(255,255,255,.07) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.07) 1px,transparent 1px);background-size:46px 46px;-webkit-mask-image:radial-gradient(circle at 50% 42%,#000,transparent 78%);mask-image:radial-gradient(circle at 50% 42%,#000,transparent 78%)}
-#login-overlay .blob{position:absolute;border-radius:50%;filter:blur(64px);opacity:.55;animation:lgFloat 20s ease-in-out infinite}
+#login-overlay .blob{position:absolute;border-radius:50%;filter:blur(64px);opacity:.55;animation:lgFloat 20s ease-in-out infinite;will-change:transform;transform:translateZ(0)}
 #login-overlay .b1{width:440px;height:440px;background:#38e0f0;top:-90px;left:-70px}
 #login-overlay .b2{width:400px;height:400px;background:#8b5cf6;bottom:-120px;right:-50px;animation-delay:-5s}
 #login-overlay .b3{width:340px;height:340px;background:#0ea5e9;bottom:14%;left:26%;animation-delay:-10s}
@@ -272,7 +272,14 @@ tr.dpa-detail-row.show{display:table-row}
 #login-overlay .shake{animation:lgShake .4s}
 @keyframes lgShake{10%,90%{transform:translateX(-1px)}20%,80%{transform:translateX(2px)}30%,50%,70%{transform:translateX(-5px)}40%,60%{transform:translateX(5px)}}
 @media(prefers-reduced-motion:reduce){#login-overlay .blob,#login-overlay .login-card{animation:none}}
-@media(max-width:480px){#login-overlay .login-card{padding:28px 22px}#login-overlay .brand h1{font-size:17px}}
+@media(max-width:480px){
+  #login-overlay .login-card{padding:28px 22px}
+  #login-overlay .brand h1{font-size:17px}
+  /* Blur berat + animasi terus-menerus berat untuk GPU HP kelas menengah-bawah,
+     dan sering jadi sumber layar "hancur"/robek saat pinch-zoom di mobile. */
+  #login-overlay .blob{filter:blur(28px);animation:none}
+  #login-overlay .lg-grid{opacity:.3}
+}
 @media print{#login-overlay{display:none!important}}
 </style>
 </head>
@@ -366,6 +373,7 @@ tr.dpa-detail-row.show{display:table-row}
     overlay.style.transition = 'opacity .35s ease';
     overlay.style.opacity = '0';
     setTimeout(() => { overlay.style.display = 'none'; overlay.style.opacity = ''; overlay.style.transition = ''; }, 360);
+    if (window.bapendaResetIdleTimer) window.bapendaResetIdleTimer();
   }
 
   // Supabase menyimpan sesi login otomatis (localStorage) -- kalau sudah pernah
@@ -421,6 +429,35 @@ tr.dpa-detail-row.show{display:table-row}
       passIn.focus();
     }
   });
+})();
+</script>
+
+<script>
+(function(){
+  /* Auto-logout setelah 30 menit tanpa aktivitas -- hanya berjalan selagi
+     pengguna benar-benar sudah login (layar login tidak sedang tampil). */
+  const BATAS_TIDAK_AKTIF_MS = 30 * 60 * 1000; // 30 menit
+  let timerTidakAktif = null;
+
+  function sedangLogin(){
+    const overlay = document.getElementById('login-overlay');
+    return !!overlay && overlay.style.display !== 'none';
+  }
+
+  function resetTimerTidakAktif(){
+    if (timerTidakAktif) { clearTimeout(timerTidakAktif); timerTidakAktif = null; }
+    if (sedangLogin()) return; // belum login -- tak perlu hitung mundur
+    timerTidakAktif = setTimeout(() => {
+      if (typeof window.logout === 'function') window.logout();
+    }, BATAS_TIDAK_AKTIF_MS);
+  }
+  window.bapendaResetIdleTimer = resetTimerTidakAktif;
+
+  ['mousemove', 'mousedown', 'keydown', 'wheel', 'scroll', 'touchstart', 'click'].forEach(function(evt){
+    window.addEventListener(evt, resetTimerTidakAktif, { passive: true });
+  });
+
+  resetTimerTidakAktif();
 })();
 </script>
 
@@ -1034,6 +1071,22 @@ window.toggleDpaDetailByButton=async function(btn){
 
   const detailId="detail-"+sub.replace(/[^a-zA-Z0-9_-]/g,"_")+"-"+kode.replace(/[^a-zA-Z0-9_-]/g,"_");
   let row=document.getElementById(detailId);
+
+  // Hanya 1 rincian DPA boleh terbuka sekaligus -- kalau tombol ini akan DIBUKA,
+  // tutup dulu semua rincian lain yang sedang terbuka.
+  const akanDibuka = !row || !row.classList.contains("show");
+  if (akanDibuka) {
+    document.querySelectorAll(".expand-btn.open").forEach(function(tombolLain){
+      if (tombolLain === btn) return;
+      tombolLain.classList.remove("open");
+      tombolLain.textContent = "+";
+      const subLain = String(tombolLain.getAttribute("data-subkeg-code")||"").trim();
+      const kodeLain = String(tombolLain.getAttribute("data-dpa-code")||"").trim();
+      const idLain = "detail-"+subLain.replace(/[^a-zA-Z0-9_-]/g,"_")+"-"+kodeLain.replace(/[^a-zA-Z0-9_-]/g,"_");
+      const rowLain = document.getElementById(idLain);
+      if (rowLain) rowLain.classList.remove("show");
+    });
+  }
 
   try{
     if(!row){
