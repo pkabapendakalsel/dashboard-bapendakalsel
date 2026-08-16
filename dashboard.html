@@ -904,10 +904,44 @@ function toggleExpand(cardId) {
   }, 250);
 }
 
+// ==========================================================================
+// CACHE RINGAN UNTUK CSV UTAMA (Anggaran & RAK) -- akar lambatnya loading
+// BUKAN bandwidth pengguna, tapi Google Sheets harus me-render ulang CSV
+// dari nol di server setiap kali diminta (terutama sheet "Rekap" yang
+// menggabungkan 12 bulan x 4 bidang). Trigger Apps Script cuma menyegarkan
+// datanya tiap 10 menit, jadi menarik ulang dari Google di SETIAP pemuatan
+// halaman itu boros -- cache 5 menit ini bikin buka-tutup/reload dalam
+// sesi yang sama jadi hampir instan. Disimpan per-tab (sessionStorage),
+// bukan lintas hari, supaya tidak ada risiko data basi berkepanjangan.
+const CSV_CACHE_TTL_MS = 5 * 60 * 1000;
+
+function ambilCSVDariCache(url){
+  try {
+    const raw = sessionStorage.getItem('csvcache::' + url);
+    if (!raw) return null;
+    const obj = JSON.parse(raw);
+    if (!obj || (Date.now() - obj.ts) > CSV_CACHE_TTL_MS) return null;
+    return obj.text;
+  } catch(_) { return null; }
+}
+function simpanCSVKeCache(url, text){
+  try { sessionStorage.setItem('csvcache::' + url, JSON.stringify({ ts: Date.now(), text: text })); } catch(_){}
+}
+
 function fetchCSV(url) {
-    return new Promise((resolve, reject) => {
-        Papa.parse(url, { download: true, header: true, skipEmptyLines: true, complete: resolve, error: reject });
-    });
+    const cached = ambilCSVDariCache(url);
+    if (cached !== null) {
+        return Promise.resolve({ data: Papa.parse(cached, { header: true, skipEmptyLines: true }).data });
+    }
+    return fetch(url, { cache: 'no-store' })
+        .then(function(res){
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            return res.text();
+        })
+        .then(function(text){
+            simpanCSVKeCache(url, text);
+            return { data: Papa.parse(text, { header: true, skipEmptyLines: true }).data };
+        });
 }
 
 
