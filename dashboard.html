@@ -225,8 +225,11 @@ tr.dpa-detail-row.show{display:table-row}
  .pie-card{grid-row:1}.bar-card{grid-row:2}.line-card{grid-row:3}
 }
 @media(max-width:650px){
- .dashboard-layout{padding:10px;gap:12px}.header-section{top:5px;padding:16px;border-radius:18px}.header-controls,.filters,.header-actions{flex-direction:column;align-items:stretch}.filter-group select,.msel{max-width:none;width:100%}.btn-laporan,.btn-logout{width:100%}
- .kpi-wrapper{grid-template-columns:1fr}.charts-wrapper{height:900px}.chart-card{padding:13px}.table-wrapper{max-height:55vh}
+ .dashboard-layout{padding:10px;gap:12px}.header-section{top:5px;padding:14px;border-radius:18px}.header-logo{height:50px;padding:6px 10px}
+ .header-controls,.filters{flex-direction:column;align-items:stretch}.filter-group select,.msel{max-width:none;width:100%}
+ .header-actions{flex-direction:row;gap:8px}.btn-laporan,.btn-logout{flex:1 1 0;width:auto;padding:11px 8px}
+ .kpi-wrapper{grid-template-columns:repeat(2,1fr);gap:10px}.kpi-card{padding:14px 14px 13px;min-height:88px}.kpi-title{font-size:10px}.kpi-value{font-size:clamp(18px,5.5vw,24px)}
+ .charts-wrapper{height:900px}.chart-card{padding:13px}.table-wrapper{max-height:55vh}
 
  /* ===== FILTER TOGGLE (mobile only): panel filter di-collapse di balik tombol,
     supaya header tidak lagi memenuhi 100% layar HP saat pertama dibuka. ===== */
@@ -358,6 +361,30 @@ tr.dpa-detail-row.show{display:table-row}
   const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   window.bapendaSupabase = sb; // dipakai juga oleh logout() di skrip dashboard utama
 
+  // ============================================================================================
+  // BATAS IDLE 30 MENIT -- disimpan sebagai timestamp asli di localStorage (bukan sekadar
+  // setTimeout di memori JS). setTimeout biasa "hilang" begitu tab HP dibekukan/dimatikan
+  // browser saat layar terkunci semalaman -- saat dibuka lagi paginya, sesi Supabase di
+  // localStorage masih valid (auto-refresh token) sehingga pengguna otomatis masuk lagi
+  // padahal sudah idle berjam-jam. Timestamp ini dicek ulang di SETIAP pemuatan halaman,
+  // jadi tetap terdeteksi idle walau tab sempat tertutup/dibekukan total.
+  const IDLE_LIMIT_MS = 30 * 60 * 1000;
+  const IDLE_KEY = 'bapenda_last_activity_ts';
+
+  function tandaiAktivitasTerakhir(){
+    try { localStorage.setItem(IDLE_KEY, String(Date.now())); } catch(_){}
+  }
+  window.bapendaTandaiAktivitas = tandaiAktivitasTerakhir;
+
+  function sudahMelewatiBatasIdle(){
+    try {
+      const last = parseInt(localStorage.getItem(IDLE_KEY), 10);
+      if (!last || isNaN(last)) return false;
+      return (Date.now() - last) > IDLE_LIMIT_MS;
+    } catch(_){ return false; }
+  }
+  window.bapendaSudahIdle = sudahMelewatiBatasIdle;
+
   const overlay = document.getElementById('login-overlay');
   const form = document.getElementById('lg-form');
   const errBox = document.getElementById('lg-error');
@@ -385,6 +412,7 @@ tr.dpa-detail-row.show{display:table-row}
 
   function sembunyikanLogin(){
     if (!overlay) return;
+    tandaiAktivitasTerakhir();
     document.documentElement.style.overflow = '';
     overlay.style.transition = 'opacity .35s ease';
     overlay.style.opacity = '0';
@@ -409,6 +437,14 @@ tr.dpa-detail-row.show{display:table-row}
   // daripada elemen #dashboard-layout selesai di-parse browser, membuatnya gagal
   // ditemukan (null) dan dashboard tak pernah dimunculkan (layar jadi putih kosong).
   function jalankanPengecekanSesi(){
+    if (sudahMelewatiBatasIdle()) {
+      // Sudah idle lebih dari 30 menit sejak aktivitas terakhir (dihitung dari
+      // timestamp tersimpan, bukan dari lamanya tab ini terbuka) -- paksa keluar
+      // dari sesi Supabase yang tersimpan, jangan biarkan auto-login lolos.
+      try { localStorage.removeItem(IDLE_KEY); } catch(_){}
+      sb.auth.signOut().catch(function(){}).then(tampilkanLogin, tampilkanLogin);
+      return;
+    }
     sb.auth.getSession().then(({ data }) => {
       if (data && data.session) sembunyikanLogin();
       else tampilkanLogin();
@@ -472,7 +508,11 @@ tr.dpa-detail-row.show{display:table-row}
 <script>
 (function(){
   /* Auto-logout setelah 30 menit tanpa aktivitas -- hanya berjalan selagi
-     pengguna benar-benar sudah login (layar login tidak sedang tampil). */
+     pengguna benar-benar sudah login (layar login tidak sedang tampil).
+     Dua lapis: (1) setTimeout untuk respons instan selama tab ini aktif,
+     (2) setInterval yang mengecek timestamp asli di localStorage sebagai
+     jaring pengaman -- setTimeout bisa telat/dibekukan browser saat tab
+     di-background atau layar HP terkunci lama. */
   const BATAS_TIDAK_AKTIF_MS = 30 * 60 * 1000; // 30 menit
   let timerTidakAktif = null;
 
@@ -482,6 +522,7 @@ tr.dpa-detail-row.show{display:table-row}
   }
 
   function resetTimerTidakAktif(){
+    if (window.bapendaTandaiAktivitas) window.bapendaTandaiAktivitas();
     if (timerTidakAktif) { clearTimeout(timerTidakAktif); timerTidakAktif = null; }
     if (sedangLogin()) return; // belum login -- tak perlu hitung mundur
     timerTidakAktif = setTimeout(() => {
@@ -493,6 +534,13 @@ tr.dpa-detail-row.show{display:table-row}
   ['mousemove', 'mousedown', 'keydown', 'wheel', 'scroll', 'touchstart', 'click'].forEach(function(evt){
     window.addEventListener(evt, resetTimerTidakAktif, { passive: true });
   });
+
+  setInterval(function(){
+    if (sedangLogin()) return;
+    if (window.bapendaSudahIdle && window.bapendaSudahIdle()) {
+      if (typeof window.logout === 'function') window.logout();
+    }
+  }, 30 * 1000);
 
   resetTimerTidakAktif();
 })();
@@ -772,15 +820,17 @@ document.getElementById('filter-tahun').addEventListener('change', function(e) {
 });
 
 function logout(){
-  if (window.bapendaSupabase) { window.bapendaSupabase.auth.signOut().catch(function(){}); }
-  if (window.bapendaTampilkanLogin) { window.bapendaTampilkanLogin(); }
-  else {
-    const ov = document.getElementById('login-overlay');
-    if (ov){ ov.style.display = 'flex'; ov.style.opacity = ''; ov.style.transition = ''; }
-    document.documentElement.style.overflow = 'hidden';
+  // Logout SELALU diikuti reload penuh (bukan cuma menampilkan overlay login) --
+  // membersihkan seluruh state JS (chart, filter, timer) sekaligus memastikan
+  // sesi Supabase yang tersimpan di localStorage benar-benar sudah dicabut
+  // sebelum halaman dievaluasi ulang dari awal.
+  try { localStorage.removeItem('bapenda_last_activity_ts'); } catch(_){}
+  const muatUlang = function(){ window.location.reload(); };
+  if (window.bapendaSupabase) {
+    window.bapendaSupabase.auth.signOut().catch(function(){}).then(muatUlang, muatUlang);
+  } else {
+    muatUlang();
   }
-  const p = document.getElementById('lg-pass'); if (p) p.value = '';
-  const u = document.getElementById('lg-user'); if (u){ u.value = ''; setTimeout(() => u.focus(), 80); }
 }
 
 function toggleTableZoom() {
