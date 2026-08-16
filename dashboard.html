@@ -318,14 +318,14 @@ tr.dpa-detail-row.show{display:table-row}
         <label for="lg-user">Nama Pengguna</label>
         <div class="iw">
           <svg class="lead" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-          <input type="text" id="lg-user" placeholder="Masukkan nama pengguna" autocomplete="username" required>
+          <input type="text" id="lg-user" placeholder="Masukkan nama pengguna" autocomplete="username">
         </div>
       </div>
       <div class="field">
         <label for="lg-pass">Kata Sandi</label>
         <div class="iw">
           <svg class="lead" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-          <input type="password" id="lg-pass" placeholder="Masukkan kata sandi" autocomplete="current-password" required>
+          <input type="password" id="lg-pass" placeholder="Masukkan kata sandi" autocomplete="current-password">
           <button type="button" class="tpass" id="lg-toggle" aria-label="Tampilkan kata sandi" title="Tampilkan / sembunyikan">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
           </button>
@@ -358,7 +358,37 @@ tr.dpa-detail-row.show{display:table-row}
   // Supabase Auth memakai email sebagai identitas. Pengguna tetap cukup ketik "admin".
   const EMAIL_DOMAIN = '@bapenda.local';
 
-  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  // Beberapa browser mem-blokir/mempartisi localStorage untuk halaman yang
+  // ditanam sebagai iframe di situs lain (mis. Google Sites) -- kalau Supabase
+  // gagal memakai localStorage, jangan sampai SELURUH skrip login mati total
+  // (yang bikin tombol "Masuk" tidak merespons sama sekali). Sediakan
+  // penyimpanan cadangan di memori supaya proses login tetap jalan.
+  function bikinStoragePenyimpananAman(){
+    try {
+      const kunciUji = '__bapenda_test__';
+      localStorage.setItem(kunciUji, '1');
+      localStorage.removeItem(kunciUji);
+      return window.localStorage;
+    } catch(_) {
+      const memori = {};
+      return {
+        getItem: function(k){ return (k in memori) ? memori[k] : null; },
+        setItem: function(k, v){ memori[k] = String(v); },
+        removeItem: function(k){ delete memori[k]; }
+      };
+    }
+  }
+
+  let sb = null;
+  try {
+    if (window.supabase && typeof window.supabase.createClient === 'function') {
+      sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        auth: { storage: bikinStoragePenyimpananAman(), persistSession: true, autoRefreshToken: true }
+      });
+    }
+  } catch(err) {
+    console.error('Gagal membuat klien Supabase:', err);
+  }
   window.bapendaSupabase = sb; // dipakai juga oleh logout() di skrip dashboard utama
 
   // ============================================================================================
@@ -437,6 +467,7 @@ tr.dpa-detail-row.show{display:table-row}
   // daripada elemen #dashboard-layout selesai di-parse browser, membuatnya gagal
   // ditemukan (null) dan dashboard tak pernah dimunculkan (layar jadi putih kosong).
   function jalankanPengecekanSesi(){
+    if (!sb) { tampilkanLogin(); return; } // Supabase gagal dibuat -- tetap tampilkan form login, jangan diam saja
     if (sudahMelewatiBatasIdle()) {
       // Sudah idle lebih dari 30 menit sejak aktivitas terakhir (dihitung dari
       // timestamp tersimpan, bukan dari lamanya tab ini terbuka) -- paksa keluar
@@ -448,6 +479,9 @@ tr.dpa-detail-row.show{display:table-row}
     sb.auth.getSession().then(({ data }) => {
       if (data && data.session) sembunyikanLogin();
       else tampilkanLogin();
+    }).catch(function(err){
+      console.error('Gagal mengecek sesi login:', err);
+      tampilkanLogin();
     });
   }
   if (document.readyState === 'loading') {
@@ -482,12 +516,32 @@ tr.dpa-detail-row.show{display:table-row}
       return;
     }
 
+    if (!sb) {
+      gagal('Sistem login gagal dimuat. Coba muat ulang halaman (tarik ke bawah untuk refresh).');
+      return;
+    }
+
     submitBtn.disabled = true;
     submitLabel.textContent = 'Memeriksa…';
     errBox.classList.remove('show');
 
     const email = u.includes('@') ? u : (u + EMAIL_DOMAIN);
-    const { error } = await sb.auth.signInWithPassword({ email, password: p });
+    let error = null;
+    try {
+      const hasil = await sb.auth.signInWithPassword({ email, password: p });
+      error = hasil.error;
+    } catch (jaringanErr) {
+      // Panggilan ke server gagal total (bukan salah password) -- misalnya
+      // koneksi terputus, atau localStorage/iframe di Google Sites menghambat
+      // Supabase. Tanpa try/catch ini, kegagalan seperti ini jadi unhandled
+      // promise rejection yang TIDAK terlihat sama sekali oleh pengguna --
+      // tombol macet di "Memeriksa..." tanpa pesan apa pun.
+      console.error('Gagal terhubung ke server login:', jaringanErr);
+      submitBtn.disabled = false;
+      submitLabel.textContent = 'Masuk';
+      gagal('Gagal terhubung ke server login. Periksa koneksi internet Anda lalu coba lagi.');
+      return;
+    }
 
     submitBtn.disabled = false;
     submitLabel.textContent = 'Masuk';
