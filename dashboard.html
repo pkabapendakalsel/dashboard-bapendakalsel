@@ -78,6 +78,11 @@ body::before{
 .header-title p{margin:6px 0 0;color:rgba(255,255,255,.85);font-size:clamp(11px,.78vw,15px);font-weight:500}
 .header-controls{display:flex;flex-direction:column;align-items:flex-end;gap:12px}
 .filters{display:flex;gap:9px;flex-wrap:wrap;justify-content:flex-end;padding:8px;border-radius:16px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.28);backdrop-filter:blur(8px)}
+.filter-toggle-btn{display:none;align-items:center;justify-content:center;gap:8px;width:100%;padding:12px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.4);background:rgba(255,255,255,.16);color:#fff;font-family:'Inter',sans-serif;font-size:13px;font-weight:800;cursor:pointer;transition:.2s}
+.filter-toggle-btn:hover{background:rgba(255,255,255,.26)}
+.filter-toggle-btn .ftb-chevron{transition:transform .22s ease;flex:0 0 16px}
+.filter-toggle-btn.open .ftb-chevron{transform:rotate(180deg)}
+.filter-toggle-btn .ftb-label{flex:1 1 auto;text-align:left}
 .filter-group{display:flex;flex-direction:column;gap:4px}
 .filter-group label{font-size:10px;font-weight:800;color:rgba(255,255,255,.85);text-transform:uppercase;letter-spacing:.08em;padding-left:3px}
 .filter-group select{padding:9px 28px 9px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.4);font-family:'Inter',sans-serif;font-size:12px;font-weight:700;color:#1f2a44;background:rgba(255,255,255,.96);outline:none;cursor:pointer;min-width:95px;max-width:210px;transition:.2s;box-shadow:0 3px 10px rgba(0,0,0,.06)}
@@ -222,6 +227,12 @@ tr.dpa-detail-row.show{display:table-row}
 @media(max-width:650px){
  .dashboard-layout{padding:10px;gap:12px}.header-section{top:5px;padding:16px;border-radius:18px}.header-controls,.filters,.header-actions{flex-direction:column;align-items:stretch}.filter-group select,.msel{max-width:none;width:100%}.btn-laporan,.btn-logout{width:100%}
  .kpi-wrapper{grid-template-columns:1fr}.charts-wrapper{height:900px}.chart-card{padding:13px}.table-wrapper{max-height:55vh}
+
+ /* ===== FILTER TOGGLE (mobile only): panel filter di-collapse di balik tombol,
+    supaya header tidak lagi memenuhi 100% layar HP saat pertama dibuka. ===== */
+ .filter-toggle-btn{display:flex}
+ .filters{max-height:0;opacity:0;overflow:hidden;padding:0;margin:0;border:0;pointer-events:none;transition:max-height .3s ease,opacity .25s ease,margin .3s ease,padding .3s ease}
+ .filters.open{max-height:1200px;opacity:1;margin-top:10px;padding:8px;pointer-events:auto}
 }
 
 @media print{
@@ -523,7 +534,12 @@ tr.dpa-detail-row.show{display:table-row}
       </div>
     </div>
     <div class="header-controls">
-      <div class="filters">
+      <button type="button" id="filter-toggle-btn" class="filter-toggle-btn" onclick="toggleFilterPanel()" aria-expanded="false" aria-controls="filters-panel">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
+        <span class="ftb-label">Tampilkan Filter</span>
+        <svg class="ftb-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <div class="filters" id="filters-panel">
         <div class="filter-group">
           <label>Tahun</label>
           <select id="filter-tahun">
@@ -566,6 +582,18 @@ tr.dpa-detail-row.show{display:table-row}
       </div>
     </div>
   </div>
+  <script>
+  function toggleFilterPanel(){
+    var panel = document.getElementById('filters-panel');
+    var btn = document.getElementById('filter-toggle-btn');
+    if (!panel || !btn) return;
+    var isOpen = panel.classList.toggle('open');
+    btn.classList.toggle('open', isOpen);
+    btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    var label = btn.querySelector('.ftb-label');
+    if (label) label.textContent = isOpen ? 'Sembunyikan Filter' : 'Tampilkan Filter';
+  }
+  </script>
 
   <div class="kpi-wrapper">
     <div class="kpi-card" id="kpi-anggaran"><div class="kpi-title">Total Anggaran (Pagu)</div><div class="kpi-value" id="val-anggaran">Rp 0</div></div>
